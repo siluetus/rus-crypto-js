@@ -458,7 +458,8 @@ function CryptoPro() {
 				oCertificate.PublicKey().then(k => k.Algorithm).then(a => a.FriendlyName),
 				oCertificate.HasPrivateKey().then(key => !key && ['', undefined] || oCertificate.PrivateKey.then(k => Promise.all([
 					k.ProviderName, k.ProviderType
-				])))
+				]))),
+				oCertificate.PublicKey().then(k => k.Algorithm).then(a => a.Value),
 			]))
 			.then(a => {
 				oInfo = {
@@ -476,7 +477,8 @@ function CryptoPro() {
 					Version: a[8],
 					Algorithm: a[9],
 					ProviderName: a[10][0],
-					ProviderType: a[10][1]
+					ProviderType: a[10][1],
+					AlgorithmOid: a[11]
 				};
 				oInfo.Subject = string2dn(oInfo.SubjectName);
 				oInfo.Issuer  = string2dn(oInfo.IssuerName);
@@ -509,9 +511,9 @@ function CryptoPro() {
 						ValidToDate: new Date(oCertificate.ValidToDate),
 						Version: oCertificate.Version,
 						Algorithm: oCertificate.PublicKey().Algorithm.FriendlyName,
+						AlgorithmOid: oCertificate.PublicKey().Algorithm.Value,
 						ProviderName: hasKey && oCertificate.PrivateKey.ProviderName || '',
-						ProviderType: hasKey && oCertificate.PrivateKey.ProviderType || undefined,
-
+						ProviderType: hasKey && oCertificate.PrivateKey.ProviderType || undefined
 					};
 					oInfo.toString = infoToString;
 					resolve(oInfo);
