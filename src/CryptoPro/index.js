@@ -5,16 +5,16 @@
  */
 
 import DN from '../DN';
-import { 
-	X509KeySpec, 
-	X509PrivateKeyExportFlags, 
-	X509CertificateEnrollmentContext, 
-	X509KeyUsageFlags, 
-	X500NameFlags, 
-	EncodingType, 
-	InstallResponseRestrictionFlags, 
-	ProviderTypes, 
-	cadesErrorMesages 
+import {
+	X509KeySpec,
+	X509PrivateKeyExportFlags,
+	X509CertificateEnrollmentContext,
+	X509KeyUsageFlags,
+	X500NameFlags,
+	EncodingType,
+	InstallResponseRestrictionFlags,
+	ProviderTypes,
+	cadesErrorMesages
 } from './constants';
 import { convertDN, versionCompare } from '../helpers';
 
@@ -22,7 +22,7 @@ function CryptoPro() {
 	//If the string contains fewer than 128 bytes, the Length field of the TLV triplet requires only one byte to specify the content length.
 	//If the string is more than 127 bytes, bit 7 of the Length field is set to 1 and bits 6 through 0 specify the number of additional bytes used to identify the content length.
 	const maxLengthCSPName = 127;
-	
+
 	// https://www.cryptopro.ru/forum2/default.aspx?g=posts&m=38467#post38467
 	const asn1UTF8StringTag = 0x0c; // 12, UTF8String
 
@@ -497,7 +497,7 @@ function CryptoPro() {
 					const oParesedSubj = string2dn(oCertificate.SubjectName);
 					const oInfo = {
 						HasPrivateKey: hasKey,
-						IsValid: oCertificate.IsValid().Result,						
+						IsValid: oCertificate.IsValid().Result,
 						IssuerName: oCertificate.IssuerName,
 						Issuer: string2dn(oCertificate.IssuerName),
 						SerialNumber: oCertificate.SerialNumber,
@@ -515,6 +515,188 @@ function CryptoPro() {
 					};
 					oInfo.toString = infoToString;
 					resolve(oInfo);
+				}
+				catch (e) {
+					const err = getError(e);
+					throw new Error(err);
+				}
+			});
+		}
+	};
+
+	this.createCoSignHash = function (hash, sigContent, certThumbprint, pin = null) {
+		if(canAsync) {
+			let oSigner, oCertificate, oSignedData, oHashedData;
+			return getCertificateObject(certThumbprint, pin)
+				.then(certificate => {
+					oCertificate = certificate;
+					return Promise.all([
+						cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner"),
+						cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData"),
+						cadesplugin.CreateObjectAsync("CAdESCOM.HashedData"),
+					]);
+				})
+				.then(objects => {
+					oSigner = objects[0];
+					oSignedData = objects[1];
+					oHashedData = objects[2];
+
+					return Promise.all([
+						oSigner.propset_Certificate(oCertificate),
+						oSigner.propset_CheckCertificate(true),
+						oSigner.propset_Options(cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN),
+					]);
+				}).then(function () {
+					return oCertificate.PublicKey()
+				}).then(function (certPublicKey) {
+					return certPublicKey.Algorithm
+				}).then(function (certAlgorithm) {
+					return certAlgorithm.Value
+				}).then(function (algorithmValue) {
+					if (algorithmValue === "1.2.643.7.1.1.1.1") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256);
+					} else if (algorithmValue === "1.2.643.7.1.1.1.2") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512);
+					} else if (algorithmValue === "1.2.643.2.2.19") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411);
+					} else {
+						console.log("Не удалось определить алгоритм шифрования сертификата");
+					}
+				}).then(function () {
+					return oHashedData.SetHashValue(hash)
+				})
+				.then(async function(){
+					oSignedData.VerifyCades(sigContent, cadesplugin.CADESCOM_CADES_BES, true)
+						.then(()=>true)
+						.catch((e)=>true)
+				}).then(function(){
+					return oSignedData.CoSignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES)
+				})
+				.catch(e => {
+					console.log('error')
+					const err = getError(e);
+					throw new Error(err);
+				})
+		}else {
+			return new Promise(resolve => {
+				try {
+					const oCertificate = getCertificateObject(certThumbprint, pin);
+
+					const oSigner = cadesplugin.CreateObject("CAdESCOM.CPSigner");
+					oSigner.Certificate = oCertificate;
+					oSigner.Options = cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN;
+					oSigner.CheckCertificate = true;
+
+					const oSignedData = cadesplugin.CreateObject("CAdESCOM.CadesSignedData");
+
+					var oHashedData = cadesplugin.CreateObject("CAdESCOM.HashedData");
+
+					let certPublicKey = oCertificate.PublicKey();
+					let certAlgorithm = certPublicKey.Algorithm;
+					let hashAlg = certAlgorithm.Value;
+					if (hashAlg === "1.2.643.7.1.1.1.1") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256;
+					} else if (hashAlg === "1.2.643.7.1.1.1.2") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512;
+					} else if (hashAlg === "1.2.643.2.2.19") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411;
+					} else {
+						console.log("Не удалось определить алгоритм шифрования сертификата");
+						return;
+					}
+
+					oHashedData.SetHashValue(hash)
+					oSignedData.VerifyCades(sigContent, cadesplugin.CADESCOM_CADES_BES, true)
+					const sSignedHash = oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
+					resolve(sSignedHash);
+				} catch (e) {
+					const err = getError(e);
+					throw new Error(err);
+				}
+			})
+		}
+	}
+
+	this.signHash = function(hash, certThumbprint, pin = null){
+		if(canAsync) {
+			let oCertificate, oSigner, oSignedData, oHashedData;
+			return getCertificateObject(certThumbprint, pin)
+				.then(certificate => {
+					oCertificate = certificate;
+					return Promise.all([
+						cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner"),
+						cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData"),
+						cadesplugin.CreateObjectAsync("CAdESCOM.HashedData")
+					]);
+				})
+				.then(objects => {
+					oSigner = objects[0];
+					oSignedData = objects[1];
+					oHashedData = objects[2];
+
+					return Promise.all([
+						oSigner.propset_Certificate(oCertificate),
+						oSigner.propset_CheckCertificate(true),
+						oSigner.propset_Options(cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN),
+					]);
+				}).then(function () {
+					return oCertificate.PublicKey()
+				}).then(function (certPublicKey) {
+					return certPublicKey.Algorithm
+				}).then(function (certAlgorithm) {
+					return certAlgorithm.Value
+				}).then(function (algorithmValue) {
+					if (algorithmValue === "1.2.643.7.1.1.1.1") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256);
+					} else if (algorithmValue === "1.2.643.7.1.1.1.2") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512);
+					} else if (algorithmValue === "1.2.643.2.2.19") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411);
+					} else {
+						console.log("Не удалось определить алгоритм шифрования сертификата");
+					}
+				}).then(function () {
+					return oHashedData.SetHashValue(hash)
+				})
+				.then(() => oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES))
+				.catch(e => {
+					console.log('error')
+					const err = getError(e);
+					throw new Error(err);
+				})
+		}
+		else {
+			return new Promise(resolve => {
+				try {
+					const oCertificate = getCertificateObject(certThumbprint, pin);
+
+					const oSigner = cadesplugin.CreateObject("CAdESCOM.CPSigner");
+					oSigner.Certificate = oCertificate;
+					oSigner.Options = cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN;
+					oSigner.CheckCertificate = true;
+
+					const oSignedData = cadesplugin.CreateObject("CAdESCOM.CadesSignedData");
+
+					var oHashedData = cadesplugin.CreateObject("CAdESCOM.HashedData");
+
+					let certPublicKey = oCertificate.PublicKey();
+					let certAlgorithm = certPublicKey.Algorithm;
+					let hashAlg = certAlgorithm.Value;
+					if (hashAlg === "1.2.643.7.1.1.1.1") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256;
+					} else if (hashAlg === "1.2.643.7.1.1.1.2") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512;
+					} else if (hashAlg === "1.2.643.2.2.19") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411;
+					} else {
+						console.log("Не удалось определить алгоритм шифрования сертификата");
+						return;
+					}
+
+					oHashedData.SetHashValue(hash)
+
+					const sSignedHash = oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
+					resolve(sSignedHash);
 				}
 				catch (e) {
 					const err = getError(e);
@@ -861,6 +1043,139 @@ function CryptoPro() {
 					const sSignedMessage = oSignedData.CoSignCades(oSigner, cadesplugin.CADESCOM_CADES_BES);
 
 					resolve(sSignedMessage);
+				}
+				catch (e) {
+					const err = getError(e);
+					throw new Error(err);
+				}
+			});
+		}
+	};
+
+	/**
+	 *
+	 * @param hash
+	 * @param signHash
+	 * @param certThumbprint
+	 * @param pin
+	 * @returns {Promise<T>|undefined|Promise<unknown>}
+	 */
+	this.verifySignHash = function(hash, signHash, certThumbprint, pin = null){
+		if(canAsync) {
+			let oCertificate, oSigner, oSignedData, oHashedData;
+			return getCertificateObject(certThumbprint, pin)
+				.then(certificate => {
+					oCertificate = certificate;
+					return Promise.all([
+						cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner"),
+						cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData"),
+						cadesplugin.CreateObjectAsync("CAdESCOM.HashedData")
+					]);
+				})
+				.then(objects => {
+					oSigner = objects[0];
+					oSignedData = objects[1];
+					oHashedData = objects[2];
+
+					return Promise.all([
+						oSigner.propset_Certificate(oCertificate),
+						oSigner.propset_CheckCertificate(true),
+						oSigner.propset_Options(cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN),
+					]);
+				}).then(function () {
+					return oCertificate.PublicKey()
+				}).then(function (certPublicKey) {
+					return certPublicKey.Algorithm
+				}).then(function (certAlgorithm) {
+					return certAlgorithm.Value
+				}).then(function (algorithmValue) {
+					if (algorithmValue === "1.2.643.7.1.1.1.1") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256);
+					} else if (algorithmValue === "1.2.643.7.1.1.1.2") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512);
+					} else if (algorithmValue === "1.2.643.2.2.19") {
+						return oHashedData.propset_Algorithm(cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411);
+					} else {
+						console.log("Не удалось определить алгоритм шифрования сертификата");
+					}
+				}).then(function () {
+					return oHashedData.SetHashValue(hash)
+				})
+				.then(() => oSignedData.VerifyHash(oHashedData, signHash, cadesplugin.CADESCOM_CADES_BES))
+				.catch(e => {
+					console.log('error')
+					const err = getError(e);
+					throw new Error(err);
+				})
+		}
+		else {
+			return new Promise(resolve => {
+				try {
+					const oCertificate = getCertificateObject(certThumbprint, pin);
+
+					const oSigner = cadesplugin.CreateObject("CAdESCOM.CPSigner");
+					oSigner.Certificate = oCertificate;
+					oSigner.Options = cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN;
+					oSigner.CheckCertificate = true;
+
+					const oSignedData = cadesplugin.CreateObject("CAdESCOM.CadesSignedData");
+
+					var oHashedData = cadesplugin.CreateObject("CAdESCOM.HashedData");
+
+					let certPublicKey = oCertificate.PublicKey();
+					let certAlgorithm = certPublicKey.Algorithm;
+					let hashAlg = certAlgorithm.Value;
+					if (hashAlg === "1.2.643.7.1.1.1.1") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_256;
+					} else if (hashAlg === "1.2.643.7.1.1.1.2") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411_2012_512;
+					} else if (hashAlg === "1.2.643.2.2.19") {
+						oHashedData.Algorithm = cadesplugin.CADESCOM_HASH_ALGORITHM_CP_GOST_3411;
+					} else {
+						console.log("Не удалось определить алгоритм шифрования сертификата");
+						return;
+					}
+
+					oHashedData.SetHashValue(hash)
+
+					const sSignedHash = oSignedData.VerifyHash(oHashedData, signHash, cadesplugin.CADESCOM_CADES_BES);
+					resolve(sSignedHash);
+				}
+				catch (e) {
+					const err = getError(e);
+					throw new Error(err);
+				}
+			});
+		}
+		if(canAsync) {
+			let oHashedData;
+			let oSignedData;
+			return cadesplugin.then(function(){
+				return cadesplugin.CreateObjectAsync("CAdESCOM.HashedData");
+			}).then(function(object) {
+				oHashedData = object;
+				return oHashedData.SetHashValue(hash)
+			}).then(function() {
+				return cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+			}).then(function(object) {
+				oSignedData = object;
+				return oSignedData.VerifyHash(oHashedData, signBase64, cadesplugin.CADESCOM_CADES_BES);
+			}).then(function(){
+				return true;
+			}).catch(function(e){
+				const err = getError(e);
+				throw new Error(err);
+			});
+		}
+		else {
+			return new Promise(resolve => {
+				try {
+					const oHashedData = cadesplugin.CreateObjectAsync("CAdESCOM.HashedData");
+					oHashedData.SetHashValue(hash)
+					const oSignedData = cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+
+					oSignedData.VerifyCades(signBase64, cadesplugin.CADESCOM_CADES_BES, !attached);
+					resolve(true);
 				}
 				catch (e) {
 					const err = getError(e);

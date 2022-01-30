@@ -21,19 +21,32 @@ var inputDN = document.getElementById('dn');
 var inputCsr = document.getElementById('csr');
 var inputCert = document.getElementById('cert');
 var inputCertInfo = document.getElementById('certInfo');
+var inputCertInfo3 = document.getElementById('certInfo3');
+var inputCertInfo4 = document.getElementById('certInfo4');
 var inputCertId = document.getElementById('certId');
 var inputCertId2 = document.getElementById('certId2');
+var inputCertId3 = document.getElementById('certId3');
+var inputCertId4 = document.getElementById('certId4');
+var inputSignHashCo = document.getElementById('signHashCo');
+var inputHashCo = document.getElementById('hashCo');
+var inputCoSignHash = document.getElementById('coSignHash');
 var inputData = document.getElementById('data');
 var inputAttached = document.getElementById('attached');
 var inputData2 = document.getElementById('data2');
 var inputSign = document.getElementById('sign');
+var inputSignHash = document.getElementById('signHash');
+var inputHash = document.getElementById('inputHash');
 var inputEncrypted = document.getElementById('encrypted');
 var inputDecrypted = document.getElementById('decrypted');
 var formCsr = document.getElementById('formCsr');
 var formCert = document.getElementById('formCert');
 var formSign = document.getElementById('formSign');
+var formSignHash = document.getElementById('formSignHash');
+var formSignSignedHash = document.getElementById('formSignSignedHash');
 var formEncrypt = document.getElementById('formEncrypt');
 var buttonRefresh = document.getElementById('refresh');
+var buttonRefresh3 = document.getElementById('refresh3');
+var buttonRefresh4 = document.getElementById('refresh4');
 var inputAllInfo =  document.getElementById('allinfo');
 
 inputDN.value = JSON.stringify(oDn, null, '\t');
@@ -43,11 +56,37 @@ buttonRefresh.addEventListener('click', e => {
     loadCerts();
 });
 
+buttonRefresh3.addEventListener('click', e => {
+    console.log(e)
+    e.preventDefault();
+    loadCerts();
+});
+
+buttonRefresh4.addEventListener('click', e => {
+    console.log(e)
+    e.preventDefault();
+    loadCerts();
+});
+
 inputCertId.addEventListener('change', e => {
     const contId = e.target.value;
     inputCertInfo.value = '';
     if(!contId) return;
-    showInfo(contId);
+    showInfo(contId, inputCertInfo);
+});
+
+inputCertId3.addEventListener('change', e => {
+    const contId = e.target.value;
+    inputCertInfo3.value = '';
+    if(!contId) return;
+    showInfo(contId, inputCertInfo3);
+});
+
+inputCertId4.addEventListener('change', e => {
+    const contId = e.target.value;
+    inputCertInfo4.value = '';
+    if(!contId) return;
+    showInfo(contId, inputCertInfo4);
 });
 
 formCsr.addEventListener('submit', e => {
@@ -65,6 +104,16 @@ formSign.addEventListener('submit', e => {
     signData();
 });
 
+formSignHash.addEventListener('submit', e => {
+    e.preventDefault();
+    signHash();
+});
+
+formSignSignedHash.addEventListener('submit', e => {
+    e.preventDefault();
+    coSignHash();
+});
+
 formEncrypt.addEventListener('submit', e => {
     e.preventDefault();
     encryptData();
@@ -73,6 +122,9 @@ formEncrypt.addEventListener('submit', e => {
 function setCertOptions(certs) {
     inputCertId.innerHTML = '';
     inputCertId2.innerHTML = '';
+    inputCertId3.innerHTML = '';
+    inputCertId4.innerHTML = '';
+
     var options = [];
     var placeholder = document.createElement('option');
     placeholder.selected = true;
@@ -91,4 +143,6 @@ function setCertOptions(certs) {
         inputCertId.appendChild(options[i]);
     }
     inputCertId2.innerHTML = inputCertId.innerHTML;
+    inputCertId3.innerHTML = inputCertId.innerHTML;
+    inputCertId4.innerHTML = inputCertId.innerHTML;
 }

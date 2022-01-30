@@ -1,11 +1,11 @@
-function showInfo(thumbprint) {
+function showInfo(thumbprint, element) {
     var cryptopro = new window.RusCryptoJS.CryptoPro;
     return cryptopro.init().then(info => {
         console.log('Initialized', info);
         return cryptopro.certificateInfo(thumbprint);
     }).then(info => {
         console.log('CertInfo', info);
-        inputCertInfo.value = info;
+        element.value = info;
     }).catch(e => {
         alert('Failed! ' + e);
     });
@@ -13,7 +13,7 @@ function showInfo(thumbprint) {
 
 function loadCerts() {
     inputCertId.innerHTML = inputCertInfo.value = '';
-    
+
     var cryptopro = new window.RusCryptoJS.CryptoPro;
     return cryptopro.init().then(info => {
         console.log('Initialized', info);
@@ -61,7 +61,7 @@ function requestCertificate() {
     if(!GlobalCryptoPro || !cert) {
         alert('Сначала надо создать CSR');
         return false;
-    }    
+    }
     return GlobalCryptoPro
     .writeCertificate(cert)
     .then(thumbprint => {
@@ -74,6 +74,45 @@ function requestCertificate() {
         inputCert.disabled = true;
         GlobalCryptoPro = undefined;
         return loadCerts();
+    }).catch(e => {
+        alert('Failed! ' + e);
+    });
+}
+
+function coSignHash() {
+    inputCoSignHash.value = '';
+    let cryptopro = new window.RusCryptoJS.CryptoPro;
+    let hash = inputHashCo.value;
+    let signedHash = inputSignHashCo.value;
+    let thumbprint = inputCertId4.value;
+    return cryptopro.init().then(info => {
+        console.log('Initialized', info);
+        return cryptopro.createCoSignHash(hash, signedHash, thumbprint);
+    }).then(signHash => {
+        inputCoSignHash.value = signHash;
+        return signHash;
+    }).then(verified => {
+        console.log('Verified: ', verified);
+        alert('Success!');
+    }).catch(e => {
+        alert('Failed! ' + e);
+    });
+}
+
+function signHash() {
+    inputSignHash.value = '';
+    let cryptopro = new window.RusCryptoJS.CryptoPro;
+    let hash = inputHash.value;
+    let thumbprint = inputCertId3.value;
+    return cryptopro.init().then(info => {
+        console.log('Initialized', info);
+        return cryptopro.signHash(hash, thumbprint);
+    }).then(signHash => {
+        inputSignHash.value = signHash;
+        return true;
+    }).then(verified => {
+        console.log('Verified: ', verified);
+        alert('Success!');
     }).catch(e => {
         alert('Failed! ' + e);
     });

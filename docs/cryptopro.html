@@ -15,7 +15,7 @@
                 RusCryptoJS
                 <a href="http://aleksandr.ru">aleksandr.ru</a>
             </h1>
-            
+
             <div class="row">
                 <div class="three columns">
                     <a class="button button-primary" href="cryptopro.html">Крипто-ПРО</a>
@@ -79,7 +79,7 @@ cryptopro.init().then(function(info) {
                 </ul>
 
                 <h5 id="init">
-                    <span class="function">init</span> () : 
+                    <span class="function">init</span> () :
                     <span class="type">Promise&lt;Object&gt;</span>
                 </h5>
                 <p>Инициализация и проверка наличия требуемых возможностей. Должна быть вызвана первой до всех прочих вызовов.</p>
@@ -128,13 +128,13 @@ cryptopro.init().then(function(info) {
 
                 <h5 id="generateCSR">
                     <span class="function">generateCSR</span>
-                    ( 
+                    (
                         dn : <span class="type">DN</span>
-                        <span class="optional"> 
+                        <span class="optional">
                             [, pin : <span class="type">String</span>
-                            [, ekuOids : <span class="type">Array</span> 
+                            [, ekuOids : <span class="type">Array</span>
                             [, providerType : <span class="type">Number</span> ]]]
-                        </span> 
+                        </span>
                     ) : <span class="type">Promise&lt;Object&gt;</span>
                 </h5>
                 <p>Создание запроса на сертификат.</p>
@@ -172,15 +172,15 @@ cryptopro.init().then(function(info) {
                     </tbody>
                 </table>
                 <p>
-                    <b class="returns">Возвращает</b> объект с полями 
+                    <b class="returns">Возвращает</b> объект с полями
                     <pre><code>{
-    csr: 'base64 запрос на сертификат' 
+    csr: 'base64 запрос на сертификат'
 }</code></pre>
                 </p>
 
                 <h5 id="writeCertificate">
                     <span class="function">writeCertificate</span>
-                    ( 
+                    (
                         certBase64 : <span class="type">String</span>
                     ) : <span class="type">Promise&lt;String&gt;</span>
                 </h5>
@@ -205,7 +205,7 @@ cryptopro.init().then(function(info) {
 
                 <h5 id="certificateInfo">
                     <span class="function">certificateInfo</span>
-                    ( 
+                    (
                         certThumbprint : <span class="type">String</span>
                     ) : <span class="type">Promise&lt;Object&gt;</span>
                 </h5>
@@ -242,20 +242,20 @@ cryptopro.init().then(function(info) {
                 </p>
 
                 <h5 id="listCertificates">
-                    <span class="function">listCertificates</span> () : 
+                    <span class="function">listCertificates</span> () :
                     <span class="type">Promise&lt;Array&gt;</span>
                 </h5>
                 <p>Получение списка доступных сертификатов.</p>
                 <p>
                     <b class="returns">Возвращает</b> массив объектов с полями:
                     <pre><code>[{
-    id: 'thumbprint', 
+    id: 'thumbprint',
     name: 'subject'
 }, ...]</code></pre>
                 </p>
 
                 <h5 id="readCertificate">
-                    <span class="function">readCertificate</span> 
+                    <span class="function">readCertificate</span>
                     (
                         certThumbprint : <span class="type">String</span>
                     ) : <span class="type">Promise&lt;String&gt;</span>
@@ -280,7 +280,7 @@ cryptopro.init().then(function(info) {
                 </p>
 
                 <h5 id="signData">
-                    <span class="function">signData</span> 
+                    <span class="function">signData</span>
                     (
                         dataBase64 : <span class="type">String</span>,
                         certThumbprint : <span class="type">String</span>
@@ -359,7 +359,7 @@ cryptopro.init().then(function(info) {
                 </p>
 
                 <h5 id="signData2">
-                    <span class="function">signData2</span> 
+                    <span class="function">signData2</span>
                     (
                         dataBase64 : <span class="type">String</span>,
                         certThumbprint : <span class="type">String</span>,
@@ -457,7 +457,7 @@ cryptopro.init().then(function(info) {
                 </p>
 
                 <h5 id="addSign">
-                    <span class="function">addSign</span> 
+                    <span class="function">addSign</span>
                     (
                         dataBase64 : <span class="type">String</span>,
                         signBase64 : <span class="type">String</span>,
@@ -546,7 +546,7 @@ cryptopro.init().then(function(info) {
                 </p>
 
                 <h5 id="verifySign">
-                    <span class="function">verifySign</span> 
+                    <span class="function">verifySign</span>
                     (
                         dataBase64 : <span class="type">String</span>,
                         signBase64 : <span class="type">String</span>
@@ -649,7 +649,114 @@ cryptopro.init().then(function(info) {
                     <b class="returns">Возвращает</b> расшифрованные данные.
                 </p>
             </section>
-            
+            <section id="Электронная_подпись_хэш">
+                <h2>Электронная подпись хэша</h2>
+                <form id="formSignHash">
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Сертификат</label>
+                        </div>
+                        <div class="ten columns">
+                            <select class="u-full-width" id="certId3" required>
+                                <option value="" selected disabled>Обновите список сертификатов</option>
+                            </select>
+                            <button class="button" type="button" id="refresh3">
+                                Обновить список сертификатов
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Cert Info</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="certInfo3" readonly placeholder="Здесь будет отображена информация о выбранном сертификате"></textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Данные</label>
+                        </div>
+                        <div class="ten columns">
+                            <input class="u-full-width" type="text" id="inputHash" placeholder="Hash для подписи" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">&nbsp;</div>
+                        <div class="two columns">
+                            <button class="button-primary" type="submit">
+                                Подписать
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Подпись</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="signHash" readonly placeholder="Здесь будет отображена подпись"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </section>
+            <section id="Электронная_подпись_подписанного_хэша">
+                <h2>Электронная подпись ранее подписанного хэша</h2>
+                <form id="formSignSignedHash">
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Сертификат</label>
+                        </div>
+                        <div class="ten columns">
+                            <select class="u-full-width" id="certId4" required>
+                                <option value="" selected disabled>Обновите список сертификатов</option>
+                            </select>
+                            <button class="button" type="button" id="refresh4">
+                                Обновить список сертификатов
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Cert Info</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="certInfo4" readonly placeholder="Здесь будет отображена информация о выбранном сертификате"></textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Хэш посчитанный по файлу</label>
+                        </div>
+                        <div class="ten columns">
+                            <input class="u-full-width" type="text" id="hashCo" placeholder="Hash для подписи" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>base64 закодированная подпись</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="signHashCo" placeholder="Подписанный хэш" required></textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">&nbsp;</div>
+                        <div class="two columns">
+                            <button class="button-primary" type="submit">
+                                Подписать
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Подпись</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="coSignHash" readonly placeholder="Здесь будет отображена подпись"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </section>
             <section id="Выпуск_сертификата">
                 <h2>Выпуск сертификата</h2>
                 <form id="formCsr">
@@ -715,7 +822,7 @@ cryptopro.init().then(function(info) {
                     </div>
                 </form>
             </section>
-            
+
             <section id="Электронная_подпись">
                 <h2>Электронная подпись</h2>
                 <form id="formSign">
@@ -830,7 +937,7 @@ cryptopro.init().then(function(info) {
                 </form>
             </section>
         </div>
-        
+
         <script src="js/ruscrypto.min.js"></script>
         <script src="js/common.js"></script>
         <script src="js/cryptopro.js"></script>
