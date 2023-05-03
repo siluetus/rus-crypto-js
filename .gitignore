@@ -1,5 +1,8 @@
 /nbproject/
 .idea
+.settings
+.project
+.buildpath
 /node_modules/
 /package-lock.json
 npm-debug\.log
