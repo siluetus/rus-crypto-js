@@ -12,6 +12,8 @@
     var isSafari = 0;
     var isYandex = 0;
     var canPromise = !!window.Promise;
+    var cadesplugin_loaded_event_recieved = false;
+    var isFireFoxExtensionLoaded = false;
     var cadesplugin;
 
     if(canPromise)
@@ -89,9 +91,11 @@
         cadesplugin.CAPICOM_MEMORY_STORE = 0;
         cadesplugin.CAPICOM_LOCAL_MACHINE_STORE = 1;
         cadesplugin.CAPICOM_CURRENT_USER_STORE = 2;
+        cadesplugin.CAPICOM_SMART_CARD_USER_STORE = 4;
         cadesplugin.CADESCOM_MEMORY_STORE = 0;
         cadesplugin.CADESCOM_LOCAL_MACHINE_STORE = 1;
         cadesplugin.CADESCOM_CURRENT_USER_STORE = 2;
+        cadesplugin.CADESCOM_SMART_CARD_USER_STORE = 4;
         cadesplugin.CADESCOM_CONTAINER_STORE = 100;
 
         cadesplugin.CAPICOM_MY_STORE = "My";
@@ -103,7 +107,7 @@
         cadesplugin.CADESCOM_XML_SIGNATURE_TYPE_ENVELOPED = 0;
         cadesplugin.CADESCOM_XML_SIGNATURE_TYPE_ENVELOPING = 1;
         cadesplugin.CADESCOM_XML_SIGNATURE_TYPE_TEMPLATE = 2;
-        
+
         cadesplugin.CADESCOM_XADES_DEFAULT = 0x00000010;
         cadesplugin.CADESCOM_XADES_BES = 0x00000020;
         cadesplugin.CADESCOM_XADES_T = 0x00000050;
@@ -168,6 +172,7 @@
         cadesplugin.CADESCOM_AUTHENTICATED_ATTRIBUTE_SIGNING_TIME = 0;
         cadesplugin.CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_NAME = 1;
         cadesplugin.CADESCOM_AUTHENTICATED_ATTRIBUTE_DOCUMENT_DESCRIPTION = 2;
+        cadesplugin.CADESCOM_AUTHENTICATED_ATTRIBUTE_MACHINE_INFO = 0x100;
         cadesplugin.CADESCOM_ATTRIBUTE_OTHER = -1;
 
         cadesplugin.CADESCOM_STRING_TO_UCS2LE = 0;
@@ -207,6 +212,8 @@
         cadesplugin.CADESCOM_AllowUntrustedCertificate = 0x2;
         cadesplugin.CADESCOM_AllowUntrustedRoot = 0x4;
         cadesplugin.CADESCOM_SkipInstallToStore = 0x10000000;
+        cadesplugin.CADESCOM_InstallCertChainToContainer = 0x20000000;
+        cadesplugin.CADESCOM_UseContainerStore = 0x40000000;
 
         cadesplugin.ENABLE_CARRIER_TYPE_CSP = 0x01;
         cadesplugin.ENABLE_CARRIER_TYPE_FKC_NO_SM = 0x02;
@@ -226,6 +233,18 @@
         cadesplugin.MEDIA_TYPE_HDIMAGE = 0x00000002;
         cadesplugin.MEDIA_TYPE_CLOUD = 0x00000004;
         cadesplugin.MEDIA_TYPE_SCARD = 0x00000008;
+
+        cadesplugin.XCN_CRYPT_STRING_BASE64HEADER = 0;
+        cadesplugin.AT_KEYEXCHANGE = 1;
+        cadesplugin.AT_SIGNATURE = 2;
+
+        cadesplugin.CARRIER_FLAG_REMOVABLE = 1;
+        cadesplugin.CARRIER_FLAG_UNIQUE = 2;
+        cadesplugin.CARRIER_FLAG_PROTECTED = 4;
+        cadesplugin.CARRIER_FLAG_FUNCTIONAL_CARRIER = 8;
+        cadesplugin.CARRIER_FLAG_SECURE_MESSAGING = 16;
+        cadesplugin.CARRIER_FLAG_ABLE_VISUALISE_SIGNATURE = 64;
+        cadesplugin.CARRIER_FLAG_VIRTUAL = 128;
     }
 
     function async_spawn(generatorFunc) {
@@ -451,7 +470,7 @@
             var ovr = document.createElement('div');
             ovr.id = "cadesplugin_ovr";
             ovr.style = "visibility: hidden; position: fixed; left: 0px; top: 0px; width:100%; height:100%; background-color: rgba(0,0,0,0.7)";
-            ovr.innerHTML = "<div id='cadesplugin_ovr_item' style='position:relative; width:400px; margin:100px auto; background-color:#fff; border:2px solid #000; padding:10px; text-align:center; opacity: 1; z-index: 1500'>" +
+            ovr.innerHTML = "<div id='cadesplugin_ovr_item' style='position:relative; max-width:400px; margin:100px auto; background-color:#fff; border:2px solid #000; padding:10px; text-align:center; opacity: 1; z-index: 1500'>" +
                 "<button id='cadesplugin_close_install' style='float: right; font-size: 10px; background: transparent; border: 1; margin: -5px'>X</button>" +
                 "<p>Для работы КриптоПро ЭЦП Browser plugin на данном сайте необходимо расширение для браузера. Убедитесь, что оно у Вас включено или установите его." +
                 "<p><a href='https://www.cryptopro.ru/sites/default/files/products/cades/extensions/firefox_cryptopro_extension_latest.xpi'>Скачать расширение</a></p>" +
@@ -472,18 +491,33 @@
         }
     }
     function firefox_or_safari_nmcades_onload() {
+        if (window.cadesplugin_extension_loaded_callback)
+            window.cadesplugin_extension_loaded_callback();
+        isFireFoxExtensionLoaded = true;
         cpcsp_chrome_nmcades.check_chrome_plugin(plugin_loaded, plugin_loaded_error);
     }
 
-    function nmcades_api_onload () {
+    function nmcades_api_onload() {
+        if (!isIE() && !isFireFox && !isSafari) {
+            if (window.cadesplugin_extension_loaded_callback)
+                window.cadesplugin_extension_loaded_callback();
+        }
         window.postMessage("cadesplugin_echo_request", "*");
         window.addEventListener("message", function (event){
             if (typeof(event.data) !== "string" || !event.data.match("cadesplugin_loaded"))
+                return;
+            if (cadesplugin_loaded_event_recieved)
                 return;
             if(isFireFox || isSafari)
             {
                 // Для Firefox, Сафари вместе с сообщением cadesplugin_loaded прилетает url для загрузки nmcades_plugin_api.js
                 var url = event.data.substring(event.data.indexOf("url:") + 4);
+                if (!url.match("^(moz|safari)-extension://[a-zA-Z0-9/_-]+/nmcades_plugin_api.js$"))
+                {
+                    cpcsp_console_log(cadesplugin.LOG_LEVEL_ERROR, "Bad url \"" + url + "\" for load CryptoPro Extension for CAdES Browser plug-in");
+                    plugin_loaded_error();
+                    return;
+                }
                 var fileref = document.createElement('script');
                 fileref.setAttribute("type", "text/javascript");
                 fileref.setAttribute("src", url);
@@ -493,6 +527,7 @@
             }else {
                 cpcsp_chrome_nmcades.check_chrome_plugin(plugin_loaded, plugin_loaded_error);
             }
+            cadesplugin_loaded_event_recieved = true;
         }, false);
     }
 
@@ -580,7 +615,8 @@
             return;
         if(isFireFox)
         {
-            show_firefox_missing_extension_dialog();
+            if (!isFireFoxExtensionLoaded)
+                show_firefox_missing_extension_dialog();
         }
         plugin_resolved = 1;
         if(canPromise)
@@ -672,7 +708,7 @@
     };
 
     //Export
-    cadesplugin.JSModuleVersion = "2.3.0";
+    cadesplugin.JSModuleVersion = "2.3.3";
     cadesplugin.async_spawn = async_spawn;
     cadesplugin.set = set_pluginObject;
     cadesplugin.set_log_level = set_log_level;
