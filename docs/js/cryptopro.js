@@ -100,16 +100,17 @@ function coSignHash() {
 }
 
 function signHash() {
-    inputSignHash.value = '';
+    inputSignHash.value = 'a';
     let cryptopro = new window.RusCryptoJS.CryptoPro;
     let hash = inputHash.value;
+    let rawSignature = inputSignHashRawSignature.checked;
     let thumbprint = inputCertId3.value;
     return cryptopro.init().then(info => {
         console.log('Initialized', info);
-        return cryptopro.signHash(hash, thumbprint);
+        return rawSignature? cryptopro.signHashRaw(hash, thumbprint) :cryptopro.signHash(hash, thumbprint);
     }).then(signHash => {
         inputSignHash.value = signHash;
-        return true;
+        return signHash != '';
     }).then(verified => {
         console.log('Verified: ', verified);
         alert('Success!');

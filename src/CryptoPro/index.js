@@ -525,7 +525,14 @@ function CryptoPro() {
 			});
 		}
 	};
-
+	
+	/**
+	 * Совместная подпись данных (двумя сертификатами). C использованием ранее рассчитанной хэш-функции вместо исходных данных
+	 * @param {string} hash Ранее посчитанное значение хэш функции, которое соответствует ранее подписанным данным существующей подписи и алгоритму подписи в сертификате.
+	 * @param {string} sigContent Существующая подпись CADES-BES в формате base64
+	 * @param {string} certThumbprint Отпечаток сертификата.
+	 * @returns {Promise<Object>}
+	 */
 	this.createCoSignHash = function (hash, sigContent, certThumbprint, pin = null) {
 		if(canAsync) {
 			let oSigner, oCertificate, oSignedData, oHashedData;
@@ -619,23 +626,37 @@ function CryptoPro() {
 		}
 	}
 
-	this.signHash = function(hash, certThumbprint, pin = null){
+	 function signHash(hash, certThumbprint, pin = null, signRaw = false){
 		if(canAsync) {
 			let oCertificate, oSigner, oSignedData, oHashedData;
 			return getCertificateObject(certThumbprint, pin)
 				.then(certificate => {
 					oCertificate = certificate;
+					if(!!signRaw) {
+						return Promise.all([
+							new Promise((resolve) => resolve(certificate)),
+							cadesplugin.CreateObjectAsync("CAdESCOM.RawSignature"),
+							cadesplugin.CreateObjectAsync("CAdESCOM.HashedData"),
+						]);
+					}
+					
 					return Promise.all([
 						cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner"),
 						cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData"),
-						cadesplugin.CreateObjectAsync("CAdESCOM.HashedData")
+						cadesplugin.CreateObjectAsync("CAdESCOM.HashedData"),
 					]);
 				})
 				.then(objects => {
 					oSigner = objects[0];
 					oSignedData = objects[1];
 					oHashedData = objects[2];
-
+					if(!!signRaw) { 
+						//oSigner = oCertificate;
+						var mSignHash = oSignedData.SignHash;
+						oSignedData.SignHash = (hash, signer, cadesType) => mSignHash(hash, signer);
+						return Promise.all([() => oSigner]);
+					}
+					
 					return Promise.all([
 						oSigner.propset_Certificate(oCertificate),
 						oSigner.propset_CheckCertificate(true),
@@ -660,7 +681,9 @@ function CryptoPro() {
 				}).then(function () {
 					return oHashedData.SetHashValue(hash)
 				})
-				.then(() => oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES))
+				.then(
+						() => oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES)
+					)
 				.catch(e => {
 					console.log('error')
 					const err = getError(e);
@@ -707,6 +730,15 @@ function CryptoPro() {
 			});
 		}
 	};
+
+
+	this.signHash = function(hash, certThumbprint, pin = null) {
+		return signHash(hash, certThumbprint, pin)
+	}
+	
+	this.signHashRaw = function(hash, certThumbprint, pin = null) {
+		return signHash(hash, certThumbprint, pin, true);
+	}
 
 	/**
 	 * Получение массива доступных сертификатов
