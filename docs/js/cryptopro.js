@@ -113,6 +113,7 @@ function signHash() {
         return signHash != '';
     }).then(verified => {
         console.log('Verified: ', verified);
+        cryptopro.readCertificate(thumbprint).then((cert) => {console.log(cert)});
         alert('Success!');
     }).catch(e => {
         alert('Failed! ' + e);
