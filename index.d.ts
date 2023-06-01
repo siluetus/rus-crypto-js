@@ -65,6 +65,8 @@ export class CryptoPro {
     certificateInfo(certThumbprint: string): Promise<CertificateInfoInterface>;
     listCertificates(): Promise<CertListItemInterface[]>;
     readCertificate(certThumbprint: string): Promise<string>;
+    signHash(hash: string, certThumbprint: string, pin?: string): Promise<String>;
+    signHashRaw(hash: string, certThumbprint: string, pin?: string): Promise<String>;
     signData(dataBase64: string, certThumbprint: string, options?: SignOptionsInterface): Promise<string>;
     signData2(dataBase64: string, certThumbprint: string, certThumbprint2: string, options?: SignOptionsInterface): Promise<string>;
     addSign(dataBase64: string, signBase64: string, certThumbprint: string, options: SignOptionsInterface): Promise<string>;
