@@ -288,9 +288,11 @@ function RuToken() {
 	/**
 	 * Получение информации о сертификате.
 	 * @param {string} certId идентификатор сертификата
+	 * @param {object} [options] не используется
 	 * @returns {Promise<Object>}
 	 */
-	this.certificateInfo = function(certId){
+	this.certificateInfo = function(certId, options){
+		if (!options) options = {};
 		let hasPrivateKey = false;
 		let serialNumber = '';
 		return new Promise(resolve => {
@@ -354,7 +356,7 @@ function RuToken() {
 
 	/**
 	 * Получение массива доступных сертификатов
-	 * @returns {Promise<{id: string; name: string;}[]>} [{id, name}, ...]
+	 * @returns {Promise<{id: string; name: string; subject: DN; validFrom: Date; validTo: Date;}[]>} [{id, name, subject, validFrom, validTo}, ...]
 	 */
 	this.listCertificates = function(){
 		let certIds = [];
@@ -367,11 +369,14 @@ function RuToken() {
 			}
 			return Promise.all(promises);
 		}).then(results => {
-			for (let i in certIds) {
-				const dn = makeDN(results[i] && results[i].subject);
+			for (let i in certIds) if (results[i]) {
+				const dn = makeDN(results[i].subject);
 				certs.push({
 					id: certIds[i],
-					name: formatCertificateName(dn)
+					name: formatCertificateName(dn),
+					subject: dn,
+					validFrom: new Date(results[i].validNotBefore),
+					validTo: new Date(results[i].validNotAfter)
 				});
 			}
 			return certs;

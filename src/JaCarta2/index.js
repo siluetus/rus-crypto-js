@@ -194,9 +194,11 @@ function JaCarta2() {
 	/**
 	 * Получение информации о сертификате.
 	 * @param {int} containerId идентификатор контейнера (сертификата)
+	 * @param {object} [options] не используется
 	 * @returns {Promise<Object>}
 	 */
-	this.certificateInfo = function (containerId) {
+	this.certificateInfo = function (containerId, options) {
+		if (!options) options = {};
 		return sync(client.Cmds.parseX509Certificate, {
 			tokenID: tokenId,
 			id: containerId
@@ -245,7 +247,7 @@ function JaCarta2() {
 
 	/**
 	 * Получение массива доступных сертификатов
-	 * @returns {Promise<{id: string; name: string;}[]>} [{id, name}, ...]
+	 * @returns {Promise<{id: string; name: string; subject: DN; validFrom: Date; validTo: Date;}[]>} [{id, name, subject, validFrom, validTo}, ...]
 	 */
 	this.listCertificates = function () {
 		return sync(client.Cmds.getContainerList, {
@@ -262,10 +264,13 @@ function JaCarta2() {
 						tokenID: tokenId,
 						id: contId
 					}).then(o => {
-						const dn = makeDN(o.Data && o.Data.Subject);
-						certs.push({
+						const dn = o.Data && makeDN(o.Data.Subject);
+						if (o.Data) certs.push({
 							id: contId,
-							name: formatCertificateName(dn, contName)
+							name: formatCertificateName(dn, contName),
+							subject: dn,
+							validFrom: o.Data.Validity['Not Before'],
+							validTo: o.Data.Validity['Not After']
 						});
 						return certs.length;
 					}));

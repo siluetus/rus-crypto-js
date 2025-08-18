@@ -57,7 +57,10 @@ function CryptoPro() {
 					return oAbout.Version;
 				}).then(function(version) {
 					pluginVersion = version;
-					return { version };
+					return {
+						version,
+						manifestV3: isManifestV3()
+					};
 				}).catch(function(e) {
 					// 'Плагин не загружен'
 					const err = getError(e);
@@ -73,7 +76,8 @@ function CryptoPro() {
 						}
 						pluginVersion = oAbout.Version;
 						resolve({
-							version: pluginVersion
+							version: pluginVersion,
+							manifestV3: false
 						});
 					}
 					catch(e) {
@@ -424,9 +428,14 @@ function CryptoPro() {
 	/**
 	 * Получение информации о сертификате.
 	 * @param {string} certThumbprint
+	 * @param {object} [options]
+	 * @param {boolean} [options.checkValid] проверять валидность сертификата через СКЗИ, а не сроку действия
 	 * @returns {Promise<Object>}
 	 */
-	this.certificateInfo = function(certThumbprint){
+	this.certificateInfo = function(certThumbprint, options){
+		if (!options) options = {
+			checkValid: false
+		};
 		const infoToString = function () {
 			return    'Название:              ' + this.Name +
 					'\nИздатель:              ' + this.IssuerName +
@@ -447,7 +456,7 @@ function CryptoPro() {
 			return getCertificateObject(certThumbprint)
 			.then(oCertificate => Promise.all([
 				oCertificate.HasPrivateKey(),
-				oCertificate.IsValid().then(v => v.Result),
+				options.checkValid ? oCertificate.IsValid().then(v => v.Result) : true,
 				oCertificate.IssuerName,
 				oCertificate.SerialNumber,
 				oCertificate.SubjectName,
@@ -483,6 +492,10 @@ function CryptoPro() {
 				oInfo.Subject = string2dn(oInfo.SubjectName);
 				oInfo.Issuer  = string2dn(oInfo.IssuerName);
 				oInfo.Name = oInfo.Subject['CN'];
+				if (!options.checkValid) {
+					const dt = new Date();
+					oInfo.IsValid = dt >= oInfo.ValidFromDate && dt <= oInfo.ValidToDate;
+				}
 				oInfo.toString = infoToString;
 				return oInfo;
 			})
@@ -499,7 +512,7 @@ function CryptoPro() {
 					const oParesedSubj = string2dn(oCertificate.SubjectName);
 					const oInfo = {
 						HasPrivateKey: hasKey,
-						IsValid: oCertificate.IsValid().Result,
+						IsValid: options.checkValid ? oCertificate.IsValid().Result : true,
 						IssuerName: oCertificate.IssuerName,
 						Issuer: string2dn(oCertificate.IssuerName),
 						SerialNumber: oCertificate.SerialNumber,
@@ -515,6 +528,10 @@ function CryptoPro() {
 						ProviderName: hasKey && oCertificate.PrivateKey.ProviderName || '',
 						ProviderType: hasKey && oCertificate.PrivateKey.ProviderType || undefined
 					};
+					if (!options.checkValid) {
+						const dt = new Date();
+						oInfo.IsValid = dt >= oInfo.ValidFromDate && dt <= oInfo.ValidToDate;
+					}
 					oInfo.toString = infoToString;
 					resolve(oInfo);
 				}
@@ -525,7 +542,7 @@ function CryptoPro() {
 			});
 		}
 	};
-	
+
 	/**
 	 * Совместная подпись данных (двумя сертификатами). C использованием ранее рассчитанной хэш-функции вместо исходных данных
 	 * @param {string} hash Ранее посчитанное значение хэш функции, которое соответствует ранее подписанным данным существующей подписи и алгоритму подписи в сертификате.
@@ -639,7 +656,7 @@ function CryptoPro() {
 							cadesplugin.CreateObjectAsync("CAdESCOM.HashedData"),
 						]);
 					}
-					
+
 					return Promise.all([
 						cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner"),
 						cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData"),
@@ -650,13 +667,13 @@ function CryptoPro() {
 					oSigner = objects[0];
 					oSignedData = objects[1];
 					oHashedData = objects[2];
-					if(!!signRaw) { 
+					if(!!signRaw) {
 						//oSigner = oCertificate;
 						var mSignHash = oSignedData.SignHash;
 						oSignedData.SignHash = (hash, signer, cadesType) => mSignHash(hash, signer);
 						return Promise.all([() => oSigner]);
 					}
-					
+
 					return Promise.all([
 						oSigner.propset_Certificate(oCertificate),
 						oSigner.propset_CheckCertificate(true),
@@ -735,14 +752,14 @@ function CryptoPro() {
 	this.signHash = function(hash, certThumbprint, pin = null) {
 		return signHash(hash, certThumbprint, pin)
 	}
-	
+
 	this.signHashRaw = function(hash, certThumbprint, pin = null) {
 		return signHash(hash, certThumbprint, pin, true);
 	}
 
 	/**
 	 * Получение массива доступных сертификатов
-	 * @returns {Promise<{id: string; name: string;}[]>} [ {id: thumbprint, name: subject}, ...]
+	 * @returns {Promise<{id: string; name: string; subject: DN; validFrom: Date; validTo: Date;}[]>} [{id, name, subject, validFrom, validTo}, ...]
 	 */
 	this.listCertificates = function(){
 		const tryContainerStore = hasContainerStore();
@@ -1381,13 +1398,20 @@ function CryptoPro() {
 	};
 
 	function hasContainerStore() {
-		//В версии плагина 2.0.13292+ есть возможность получить сертификаты из
-		//закрытых ключей и не установленных в хранилище
+		// В версии плагина 2.0.13292+ есть возможность получить сертификаты из
+		// закрытых ключей и не установленных в хранилище
 		// но не смотря на это, все равно приходится собирать список сертификатов
 		// старым и новым способом тк в новом будет отсутствовать часть старого
 		// предположительно ГОСТ-2001 с какими-то определенными Extended Key Usage OID
 
 		return versionCompare(pluginVersion, '2.0.13292') >= 0;
+	}
+
+	function isManifestV3() {
+		// Начиная с КриптоПро ЭЦП Browser plug-in версии 2.0.15400 (от 03.04.2025),
+		// реализована поддержка нового manifest V3 расширения Extension for CAdES Browser Plug-in
+
+		return versionCompare(pluginVersion, '2.0.15400') >= 0;
 	}
 
 	function fetchCertsFromStore(oStore, skipIds = []) {
@@ -1402,17 +1426,25 @@ function CryptoPro() {
 				return Promise.all(certs);
 			}).then(certificates => {
 				const certs = [];
-				for (let i in certificates) certs.push(certificates[i].SubjectName, certificates[i].Thumbprint);
+				for (let i in certificates) certs.push(
+					certificates[i].SubjectName,
+					certificates[i].Thumbprint,
+					certificates[i].ValidFromDate,
+					certificates[i].ValidToDate
+				);
 				return Promise.all(certs);
-			}).then(subjects => {
+			}).then(data => {
 				const certs = [];
-				for (let i = 0; i < subjects.length; i += 2) {
-					const id = subjects[i + 1];
+				for (let i = 0; i < data.length; i += 4) {
+					const id = data[i + 1];
 					if (skipIds.indexOf(id) + 1) break;
-					const oDN = string2dn(subjects[i]);
+					const oDN = string2dn(data[i]);
 					certs.push({
 						id,
-						name: formatCertificateName(oDN)
+						name: formatCertificateName(oDN),
+						subject: oDN,
+						validFrom: new Date(data[i + 2]),
+						validTo: new Date(data[i + 3])
 					});
 				}
 				return certs;
@@ -1428,7 +1460,10 @@ function CryptoPro() {
 				const oDN = string2dn(oCertificate.SubjectName);
 				certs.push({
 					id,
-					name: formatCertificateName(oDN)
+					name: formatCertificateName(oDN),
+					subject: oDN,
+					validFrom: new Date(oCertificate.ValidFromDate),
+					validTo: new Date(oCertificate.ValidToDate)
 				});
 			}
 			return certs;
