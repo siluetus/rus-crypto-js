@@ -30,6 +30,8 @@ function CryptoPro() {
 	let pluginVersion = '';
 	let binded = false;
 	let signerOptions = 0;
+    let cadesType =  1
+    let tSAddress = "";
 
 	/**
 	 * Инициализация и проверка наличия требуемых возможностей
@@ -57,6 +59,7 @@ function CryptoPro() {
 					return oAbout.Version;
 				}).then(function(version) {
 					pluginVersion = version;
+                    cadesType = cadesplugin.CADESCOM_CADES_BES;
 					return {
 						version,
 						manifestV3: isManifestV3()
@@ -75,6 +78,7 @@ function CryptoPro() {
 							throw new Error('КриптоПро ЭЦП Browser plug-in не загружен');
 						}
 						pluginVersion = oAbout.Version;
+                        cadesType = cadesplugin.CADESCOM_CADES_BES;
 						resolve({
 							version: pluginVersion,
 							manifestV3: false
@@ -351,6 +355,15 @@ function CryptoPro() {
 		}
 	};
 
+    this.setCadesFormat = function(format, options = []) {
+        switch(format) {
+            case 'CAdES-BES' : cadesType = cadesplugin.CADESCOM_CADES_BES; tSAddress = ''; return
+            case 'CAdES-T' : cadesType = cadesplugin.CADESCOM_CADES_T;
+                tSAddress = options['TSPAddress']; return
+        }
+        return Promise.resolve(format)
+    }
+
 	/**
 	 * Запись сертификата.
 	 * @param {string} certBase64
@@ -567,11 +580,12 @@ function CryptoPro() {
 					oSignedData = objects[1];
 					oHashedData = objects[2];
 
-					return Promise.all([
+					let promise =  Promise.all([
 						oSigner.propset_Certificate(oCertificate),
 						oSigner.propset_CheckCertificate(true),
 						oSigner.propset_Options(cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN),
 					]);
+                    return !!tSAddress ? promise.then(oSigner.propset_TSAAddress(tSAddress)) : promise
 				}).then(function () {
 					return oCertificate.PublicKey()
 				}).then(function (certPublicKey) {
@@ -592,11 +606,11 @@ function CryptoPro() {
 					return oHashedData.SetHashValue(hash)
 				})
 				.then(async function(){
-					oSignedData.VerifyCades(sigContent, cadesplugin.CADESCOM_CADES_BES, true)
+					oSignedData.VerifyCades(sigContent, cadesType, true)
 						.then(()=>true)
 						.catch((e)=>true)
 				}).then(function(){
-					return oSignedData.CoSignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES)
+					return oSignedData.CoSignHash(oHashedData, oSigner, cadesType)
 				})
 				.catch(e => {
 					console.log('error')
@@ -632,8 +646,8 @@ function CryptoPro() {
 					}
 
 					oHashedData.SetHashValue(hash)
-					oSignedData.VerifyCades(sigContent, cadesplugin.CADESCOM_CADES_BES, true)
-					const sSignedHash = oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
+					oSignedData.VerifyCades(sigContent, cadesType, true)
+					const sSignedHash = oSignedData.SignHash(oHashedData, oSigner, cadesType);
 					resolve(sSignedHash);
 				} catch (e) {
 					const err = getError(e);
@@ -674,11 +688,12 @@ function CryptoPro() {
 						return Promise.all([() => oSigner]);
 					}
 
-					return Promise.all([
+					let promise =  Promise.all([
 						oSigner.propset_Certificate(oCertificate),
 						oSigner.propset_CheckCertificate(true),
 						oSigner.propset_Options(cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN),
 					]);
+                    return !!tSAddress ? promise.then(oSigner.propset_TSAAddress(tSAddress)) : promise
 				}).then(function () {
 					return oCertificate.PublicKey()
 				}).then(function (certPublicKey) {
@@ -699,7 +714,7 @@ function CryptoPro() {
 					return oHashedData.SetHashValue(hash)
 				})
 				.then(
-						() => oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES)
+						() => oSignedData.SignHash(oHashedData, oSigner, cadesType)
 					)
 				.catch(e => {
 					console.log('error')
@@ -712,12 +727,26 @@ function CryptoPro() {
 				try {
 					const oCertificate = getCertificateObject(certThumbprint, pin);
 
-					const oSigner = cadesplugin.CreateObject("CAdESCOM.CPSigner");
-					oSigner.Certificate = oCertificate;
-					oSigner.Options = cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN;
-					oSigner.CheckCertificate = true;
+					const oSignedData = (function() {
+                        if(!!signRaw) {
+                            let oSignedData = CreateObject("CAdESCOM.RawSignature")
+                            let mSignHash = oSignedData.SignHash;
+                            oSignedData.SignHash = (hash, signer, cadesType) => mSignHash(hash, oCertificate);
+                            return oSignedData;
+                        }
+                        return cadesplugin.CreateObject("CAdESCOM.CadesSignedData");
+                    }())
 
-					const oSignedData = cadesplugin.CreateObject("CAdESCOM.CadesSignedData");
+                    const oSigner = !signRaw ? (function() {
+                        const oSigner = cadesplugin.CreateObject("CAdESCOM.CPSigner");
+
+                        oSigner.Certificate = oCertificate;
+                        oSigner.Options = cadesplugin.CAPICOM_CERTIFICATE_INCLUDE_WHOLE_CHAIN;
+                        oSigner.CheckCertificate = true;
+                        if (!!tSAddress) {
+                            oSigner.TSAAddress = tSAddress
+                        }
+                    }()) : oCertificate
 
 					var oHashedData = cadesplugin.CreateObject("CAdESCOM.HashedData");
 
@@ -737,7 +766,7 @@ function CryptoPro() {
 
 					oHashedData.SetHashValue(hash)
 
-					const sSignedHash = oSignedData.SignHash(oHashedData, oSigner, cadesplugin.CADESCOM_CADES_BES);
+					const sSignedHash = oSignedData.SignHash(oHashedData, oSigner, cadesType);
 					resolve(sSignedHash);
 				}
 				catch (e) {
@@ -901,9 +930,14 @@ function CryptoPro() {
 					// Значение свойства ContentEncoding должно быть задано до заполнения свойства Content
 					oSignedData.propset_ContentEncoding(cadesplugin.CADESCOM_BASE64_TO_BINARY)
 				]);
+
+
 			})
-			.then(() => oSignedData.propset_Content(dataBase64))
-			.then(() => oSignedData.SignCades(oSigner, cadesplugin.CADESCOM_CADES_BES, !attached))
+			.then(() => {
+                let promise =  oSignedData.propset_Content(dataBase64);
+                return !!tSAddress ? promise.then(oSigner.propset_TSAAddress(tSAddress)) : promise
+            })
+			.then(() => oSignedData.SignCades(oSigner, cadesType, !attached))
 			.catch(e => {
 				const err = getError(e);
 				throw new Error(err);
@@ -916,13 +950,15 @@ function CryptoPro() {
 					const oSigner = cadesplugin.CreateObject("CAdESCOM.CPSigner");
 					oSigner.Certificate = oCertificate;
 					oSigner.Options = signerOptions;
-
+                    if(!!tSAddress) {
+                        oSigner.TSAAddress = tSAddress
+                    }
 					const oSignedData = cadesplugin.CreateObject("CAdESCOM.CadesSignedData");
 					// Значение свойства ContentEncoding должно быть задано до заполнения свойства Content
 					oSignedData.ContentEncoding = cadesplugin.CADESCOM_BASE64_TO_BINARY;
 					oSignedData.Content = dataBase64;
 
-					const sSignedMessage = oSignedData.SignCades(oSigner, cadesplugin.CADESCOM_CADES_BES, !attached);
+					const sSignedMessage = oSignedData.SignCades(oSigner, cadesType, !attached);
 					resolve(sSignedMessage);
 				}
 				catch (e) {
@@ -972,12 +1008,12 @@ function CryptoPro() {
 				oSigner.propset_Certificate(oCertificate),
 				oSigner.propset_Options(signerOptions)
 			]))
-			.then(() => oSignedData.SignCades(oSigner, cadesplugin.CADESCOM_CADES_BES, !attached))
+			.then(() => oSignedData.SignCades(oSigner, cadesType, !attached))
 			.then(() => Promise.all([
 				oSigner.propset_Certificate(oCertificate2),
 				oSigner.propset_Options(signerOptions)
 			]))
-			.then(() => oSignedData.CoSignCades(oSigner, cadesplugin.CADESCOM_CADES_BES))
+			.then(() => oSignedData.CoSignCades(oSigner, cadesType))
 			.catch(e => {
 				console.log(arguments);
 				const err = getError(e);
@@ -998,11 +1034,11 @@ function CryptoPro() {
 					const oSigner = cadesplugin.CreateObject("CAdESCOM.CPSigner");
 					oSigner.Certificate = oCertificate;
 					oSigner.Options = signerOptions;
-					const sSignedMessage = oSignedData.SignCades(oSigner, cadesplugin.CADESCOM_CADES_BES, !attached);
+					const sSignedMessage = oSignedData.SignCades(oSigner, cadesType, !attached);
 
 					oSigner.Certificate = oCertificate2;
 					oSigner.Options = signerOptions;
-					const sSignedMessage2 = oSignedData.CoSignCades(oSigner, cadesplugin.CADESCOM_CADES_BES);
+					const sSignedMessage2 = oSignedData.CoSignCades(oSigner, cadesType);
 
 					resolve(sSignedMessage2);
 				}
@@ -1050,7 +1086,7 @@ function CryptoPro() {
 				}
 			})
 			.then(() => {
-				return oSignedData.VerifyCades(signBase64, cadesplugin.CADESCOM_CADES_BES, !attached).catch(function(e){
+				return oSignedData.VerifyCades(signBase64, cadesType, !attached).catch(function(e){
 					console.log('Existing sign not verified: %o', e);
 					// Для создания второй подписи успешная проверка не требуется.
 					// Вы можете перехватить исключение при проверке, и добавить подпись вторую.
@@ -1061,7 +1097,7 @@ function CryptoPro() {
 				oSigner.propset_Certificate(oCertificate),
 				oSigner.propset_Options(signerOptions)
 			]))
-			.then(() => oSignedData.CoSignCades(oSigner, cadesplugin.CADESCOM_CADES_BES))
+			.then(() => oSignedData.CoSignCades(oSigner, cadesType))
 			.catch(e => {
 				const err = getError(e);
 				throw new Error(err);
@@ -1079,7 +1115,7 @@ function CryptoPro() {
 					}
 
 					try {
-						oSignedData.VerifyCades(signBase64, cadesplugin.CADESCOM_CADES_BES, !attached);
+						oSignedData.VerifyCades(signBase64, ccadesType, !attached);
 					}
 					catch(e) {
 						console.log('Existing sign not verified: %o', e);
@@ -1091,7 +1127,7 @@ function CryptoPro() {
 					const oSigner = cadesplugin.CreateObject("CAdESCOM.CPSigner");
 					oSigner.Certificate = oCertificate;
 					oSigner.Options = signerOptions;
-					const sSignedMessage = oSignedData.CoSignCades(oSigner, cadesplugin.CADESCOM_CADES_BES);
+					const sSignedMessage = oSignedData.CoSignCades(oSigner, cadesType);
 
 					resolve(sSignedMessage);
 				}
@@ -1152,7 +1188,7 @@ function CryptoPro() {
 				}).then(function () {
 					return oHashedData.SetHashValue(hash)
 				})
-				.then(() => oSignedData.VerifyHash(oHashedData, signHash, cadesplugin.CADESCOM_CADES_BES))
+				.then(() => oSignedData.VerifyHash(oHashedData, signHash, cadesType))
 				.catch(e => {
 					console.log('error')
 					const err = getError(e);
@@ -1189,7 +1225,7 @@ function CryptoPro() {
 
 					oHashedData.SetHashValue(hash)
 
-					const sSignedHash = oSignedData.VerifyHash(oHashedData, signHash, cadesplugin.CADESCOM_CADES_BES);
+					const sSignedHash = oSignedData.VerifyHash(oHashedData, signHash, cadesType);
 					resolve(sSignedHash);
 				}
 				catch (e) {
@@ -1210,7 +1246,7 @@ function CryptoPro() {
 				return cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
 			}).then(function(object) {
 				oSignedData = object;
-				return oSignedData.VerifyHash(oHashedData, signBase64, cadesplugin.CADESCOM_CADES_BES);
+				return oSignedData.VerifyHash(oHashedData, signBase64, cadesTypeS);
 			}).then(function(){
 				return true;
 			}).catch(function(e){
@@ -1225,7 +1261,7 @@ function CryptoPro() {
 					oHashedData.SetHashValue(hash)
 					const oSignedData = cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
 
-					oSignedData.VerifyCades(signBase64, cadesplugin.CADESCOM_CADES_BES, !attached);
+					oSignedData.VerifyCades(signBase64, ccadesType, !attached);
 					resolve(true);
 				}
 				catch (e) {
@@ -1262,7 +1298,7 @@ function CryptoPro() {
 						.then(() => oSignedData.propset_Content(dataBase64));
 				}
 			}).then(function(){
-				return oSignedData.VerifyCades(signBase64, cadesplugin.CADESCOM_CADES_BES, !attached);
+				return oSignedData.VerifyCades(signBase64, cadesType, !attached);
 			}).then(function(){
 				//console.log('sign2: %s', sign2);
 				return true;
@@ -1280,7 +1316,7 @@ function CryptoPro() {
 						oSignedData.ContentEncoding = cadesplugin.CADESCOM_BASE64_TO_BINARY;
 						oSignedData.Content = dataBase64;
 					}
-					oSignedData.VerifyCades(signBase64, cadesplugin.CADESCOM_CADES_BES, !attached);
+					oSignedData.VerifyCades(signBase64, cadesType, !attached);
 					resolve(true);
 				}
 				catch (e) {

@@ -85,8 +85,14 @@ function coSignHash() {
     let hash = inputHashCo.value;
     let signedHash = inputSignHashCo.value;
     let thumbprint = inputCertId4.value;
-    return cryptopro.init().then(info => {
-        console.log('Initialized', info);
+    return cryptopro.init().then( () => {
+        cryptopro.setCadesFormat(
+            inputSignId4.value,
+            inputSignId4.value === 'CAdES-T' && !!inputTSPAddress4.value ?
+                { "TSPAddress": inputTSPAddress4.value } : {}
+        );
+    }).then(info => {
+        console.log('Initialized', info, cryptopro);
         return cryptopro.createCoSignHash(hash, signedHash, thumbprint);
     }).then(signHash => {
         inputCoSignHash.value = signHash;
@@ -105,7 +111,13 @@ function signHash() {
     let hash = inputHash.value;
     let rawSignature = inputSignHashRawSignature.checked;
     let thumbprint = inputCertId3.value;
-    return cryptopro.init().then(info => {
+    return cryptopro.init().then( () => {
+        cryptopro.setCadesFormat(
+            inputSignId3.value,
+            inputSignId3.value === 'CAdES-T' && !!inputTSPAddress3.value ?
+                { "TSPAddress": inputTSPAddress3.value } : {}
+        );
+    }).then(info => {
         console.log('Initialized', info);
         return rawSignature? cryptopro.signHashRaw(hash, thumbprint) :cryptopro.signHash(hash, thumbprint);
     }).then(signHash => {
@@ -128,6 +140,12 @@ function signData() {
     var thumbprint = inputCertId.value;
     return cryptopro.init().then(info => {
         console.log('Initialized', info);
+        return cryptopro.setCadesFormat(
+                inputSignId.value,
+                inputSignId.value === 'CAdES-T' && !!inputTSPAddress.value ?
+                    { "TSPAddress": inputTSPAddress.value } : {}
+            );
+    }).then(() => {
         return cryptopro.signData(data, thumbprint, { attached });
     }).then(sign => {
         inputSign.value = sign;

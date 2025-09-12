@@ -366,6 +366,36 @@ cryptopro.init().then(function(info) {
                     <b class="returns">Возвращает</b> base64 закодированное тело сертификата.
                 </p>
 
+                <h5 id="setCadesType"> Установить формат подписи CAdES
+                <span class="function">setCadesType</span>
+                (
+                    format: <span class="type">String</span>,
+                    )
+                </h5>
+                <p> Устанавливает формат CAdES генерируемой подписи </p>
+                <table class="u-full-width">
+                    <thead>
+                    <tr>
+                        <th>Параметр</th>
+                        <th>Описание</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>format</td>
+                        <td>Формат подписи CAdES-BES или CAdES-T</td>
+                    </tr>
+                    <tr>
+                        <td>options</td>
+                        <td>Дополнительные опции использования устанавливаемого формата</td>
+                    </tr>
+                    <tr>
+                        <td>options.TSAddress</td>
+                        <td>Адрес TSP сервера для подписей CAdES-T</td>
+                    </tr>
+                    </tbody>
+                </table>
+
                 <h5 id="signData">
                     <span class="function">signData</span> 
                     (
@@ -807,115 +837,6 @@ cryptopro.init().then(function(info) {
                     <b class="returns">Возвращает</b> расшифрованные данные.
                 </p>
             </section>
-            <section id="Электронная_подпись_хэш">
-                <h2>Электронная подпись хэша</h2>
-                <form id="formSignHash">
-                    <div class="row">
-                        <div class="two columns">
-                            <label>Сертификат</label>
-                        </div>
-                        <div class="ten columns">
-                            <select class="u-full-width" id="certId3" required>
-                                <option value="" selected disabled>Обновите список сертификатов</option>
-                            </select>
-                            <button class="button" type="button" id="refresh3">
-                                Обновить список сертификатов
-                            </button>
-                            <input type="checkbox" id="signHashWithRawSignature" > Сгенерировать сырую подпись
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">
-                            <label>Cert Info</label>
-                        </div>
-                        <div class="ten columns">
-                            <textarea class="u-full-width" id="certInfo3" readonly placeholder="Здесь будет отображена информация о выбранном сертификате"></textarea>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">
-                            <label>Значение рассчитанной хэш функции hex</label>
-                        </div>
-                        <div class="ten columns">
-                            <input class="u-full-width" type="text" id="inputHash" placeholder="Hash для подписи" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">&nbsp;</div>
-                        <div class="two columns">
-                            <button class="button-primary" type="submit">
-                                Подписать
-                            </button>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">
-                            <label>Подпись</label>
-                        </div>
-                        <div class="ten columns">
-                            <textarea class="u-full-width" id="signedHash" readonly placeholder="Здесь будет отображена подпись"></textarea>
-                        </div>
-                    </div>
-                </form>
-            </section>
-            <section id="Электронная_подпись_подписанного_хэша">
-                <h2>Электронная подпись ранее подписанного хэша</h2>
-                <form id="formSignSignedHash">
-                    <div class="row">
-                        <div class="two columns">
-                            <label>Сертификат</label>
-                        </div>
-                        <div class="ten columns">
-                            <select class="u-full-width" id="certId4" required>
-                                <option value="" selected disabled>Обновите список сертификатов</option>
-                            </select>
-                            <button class="button" type="button" id="refresh4">
-                                Обновить список сертификатов
-                            </button>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">
-                            <label>Cert Info</label>
-                        </div>
-                        <div class="ten columns">
-                            <textarea class="u-full-width" id="certInfo4" readonly placeholder="Здесь будет отображена информация о выбранном сертификате"></textarea>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">
-                            <label>Хэш посчитанный по файлу</label>
-                        </div>
-                        <div class="ten columns">
-                            <input class="u-full-width" type="text" id="hashCo" placeholder="Hash для подписи" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">
-                            <label>base64 закодированная подпись</label>
-                        </div>
-                        <div class="ten columns">
-                            <textarea class="u-full-width" id="signHashCo" placeholder="Подписанный хэш" required></textarea>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">&nbsp;</div>
-                        <div class="two columns">
-                            <button class="button-primary" type="submit">
-                                Подписать
-                            </button>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="two columns">
-                            <label>Подпись</label>
-                        </div>
-                        <div class="ten columns">
-                            <textarea class="u-full-width" id="coSignHash" readonly placeholder="Здесь будет отображена подпись"></textarea>
-                        </div>
-                    </div>
-                </form>
-            </section>
             <section id="Выпуск_сертификата">
                 <h2>Выпуск сертификата</h2>
                 <form id="formCsr">
@@ -1012,6 +933,25 @@ cryptopro.init().then(function(info) {
                     </div>
                     <div class="row">
                         <div class="two columns">
+                            <label>Формат CAdES</label>
+                        </div>
+                        <div class="ten columns">
+                            <select class="u-full-width" id="signId" required>
+                                <option value="CAdES-BES" selected>CAdES-BES</option>
+                                <option value="CAdES-T" >CAdES-T</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Адрес TSP</label>
+                        </div>
+                        <div class="ten columns">
+                            <input class="u-full-width" type="text" id="tSPAddress" placeholder="URL сервера TSP" value="http://testca2012.cryptopro.ru/tsp/tsp.srf">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
                             <label>Cert Info</label>
                         </div>
                         <div class="ten columns">
@@ -1050,7 +990,153 @@ cryptopro.init().then(function(info) {
                     </div>
                 </form>
             </section>
-
+            <section id="Электронная_подпись_хэш">
+                <h2>Электронная подпись хэша</h2>
+                <form id="formSignHash">
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Сертификат</label>
+                        </div>
+                        <div class="ten columns">
+                            <select class="u-full-width" id="certId3" required>
+                                <option value="" selected disabled>Обновите список сертификатов</option>
+                            </select>
+                            <button class="button" type="button" id="refresh3">
+                                Обновить список сертификатов
+                            </button>
+                            <input type="checkbox" id="signHashWithRawSignature" > Сгенерировать сырую подпись
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Формат CAdES</label>
+                        </div>
+                        <div class="ten columns">
+                            <select class="u-full-width" id="signId3" required>
+                                <option value="CAdES-BES" selected>CAdES-BES</option>
+                                <option value="CAdES-T" >CAdES-T</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Адрес TSP</label>
+                        </div>
+                        <div class="ten columns">
+                            <input class="u-full-width" type="text" id="tSPAddress3" placeholder="URL сервера TSP" value="http://testca2012.cryptopro.ru/tsp/tsp.srf">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Cert Info</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="certInfo3" readonly placeholder="Здесь будет отображена информация о выбранном сертификате"></textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Значение рассчитанной хэш функции hex</label>
+                        </div>
+                        <div class="ten columns">
+                            <input class="u-full-width" type="text" id="inputHash" placeholder="Hash для подписи" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">&nbsp;</div>
+                        <div class="two columns">
+                            <button class="button-primary" type="submit">
+                                Подписать
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Подпись</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="signedHash" readonly placeholder="Здесь будет отображена подпись"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </section>
+            <section id="Электронная_подпись_подписанного_хэша">
+                <h2>Электронная подпись ранее подписанного хэша</h2>
+                <form id="formSignSignedHash">
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Сертификат</label>
+                        </div>
+                        <div class="ten columns">
+                            <select class="u-full-width" id="certId4" required>
+                                <option value="" selected disabled>Обновите список сертификатов</option>
+                            </select>
+                            <button class="button" type="button" id="refresh4">
+                                Обновить список сертификатов
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Формат CAdES</label>
+                        </div>
+                        <div class="ten columns">
+                            <select class="u-full-width" id="signId4" required>
+                                <option value="CAdES-BES" selected>CAdES-BES</option>
+                                <option value="CAdES-T" >CAdES-T</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Адрес TSP</label>
+                        </div>
+                        <div class="ten columns">
+                            <input class="u-full-width" type="text" id="tSPAddress4" placeholder="URL сервера TSP" value="http://testca2012.cryptopro.ru/tsp/tsp.srf">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Cert Info</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="certInfo4" readonly placeholder="Здесь будет отображена информация о выбранном сертификате"></textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Хэш посчитанный по файлу</label>
+                        </div>
+                        <div class="ten columns">
+                            <input class="u-full-width" type="text" id="hashCo" placeholder="Hash для подписи" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>base64 закодированная подпись</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="signHashCo" placeholder="Подписанный хэш" required></textarea>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">&nbsp;</div>
+                        <div class="two columns">
+                            <button class="button-primary" type="submit">
+                                Подписать
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="two columns">
+                            <label>Подпись</label>
+                        </div>
+                        <div class="ten columns">
+                            <textarea class="u-full-width" id="coSignHash" readonly placeholder="Здесь будет отображена подпись"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </section>
             <section id="Шифрование_данных">
                 <h2>Шифрование данных</h2>
                 <form id="formEncrypt">
