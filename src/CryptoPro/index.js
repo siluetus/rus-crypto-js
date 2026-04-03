@@ -196,7 +196,7 @@ function CryptoPro() {
 				}
 
 				const aPromises = [
-					oPrivateKey.propset_KeySpec(X509KeySpec.XCN_AT_SIGNATURE),
+					oPrivateKey.propset_KeySpec(X509KeySpec.XCN_AT_KEYEXCHANGE),
 					oPrivateKey.propset_Existing(false),
 					oPrivateKey.propset_ExportPolicy(X509PrivateKeyExportFlags.XCN_NCRYPT_ALLOW_EXPORT_FLAG),
 					oPrivateKey.propset_ProviderType(cspType),
@@ -297,7 +297,7 @@ function CryptoPro() {
 						throw new Error('No suitable CSP!');
 					}
 
-					oPrivateKey.KeySpec = X509KeySpec.XCN_AT_SIGNATURE;
+					oPrivateKey.KeySpec = X509KeySpec.XCN_AT_KEYEXCHANGE;
 					oPrivateKey.Existing = false;
 					oPrivateKey.ExportPolicy = X509PrivateKeyExportFlags.XCN_NCRYPT_ALLOW_EXPORT_FLAG;
 					oPrivateKey.ProviderName = cspName;
